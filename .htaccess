@@ -1,0 +1,22 @@
+# Aumentar limites de arquivo para uploads grandes
+php_value upload_max_filesize 3G
+php_value post_max_size 3G
+php_value memory_limit 512M
+php_value max_execution_time 300
+php_value max_input_time 300
+
+# Permitir CORS
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type"
+</IfModule>
+
+# Permitir visualização de erros (remover em produção)
+php_flag display_errors on
+php_value error_reporting E_ALL
+
+# Diretivas para arquivos grandes
+<IfModule mod_php.c>
+    php_value max_file_uploads 20
+</IfModule> 

@@ -26,8 +26,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Função para buscar informações de armazenamento
     function fetchStorageInfo() {
-        fetch('upload.php?action=getStorageInfo')
-            .then(response => response.json())
+        fetch('upload.php?action=getStorageInfo', {
+            method: 'GET',
+            cache: 'no-cache'
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Resposta de rede não foi ok: ' + response.status);
+                }
+                return response.json();
+            })
             .then(data => {
                 const usedGB = (data.used / (1024 * 1024 * 1024)).toFixed(2);
                 const usedPercentage = (data.used / MAX_TOTAL_STORAGE) * 100;
@@ -44,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Erro ao buscar informações de armazenamento:', error);
-                showMessage('Não foi possível carregar informações de armazenamento.', 'error');
+                showMessage('Não foi possível carregar informações de armazenamento. Recarregue a página.', 'error');
             });
     }
 
@@ -84,6 +92,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // Mostrar mensagem sobre o início do upload
+        showMessage('Iniciando upload do vídeo, isso pode levar algum tempo para arquivos grandes...', 'success');
+        
         // Preparar formulário para envio
         const formData = new FormData();
         formData.append('videoFile', file);
@@ -96,19 +107,29 @@ document.addEventListener('DOMContentLoaded', function() {
         // Enviar arquivo
         const xhr = new XMLHttpRequest();
         
+        // Configurar um timeout maior para uploads grandes (10 minutos)
+        xhr.timeout = 600000; // 10 minutos em milissegundos
+        
         xhr.upload.addEventListener('progress', function(e) {
             if (e.lengthComputable) {
                 const percentComplete = Math.round((e.loaded / e.total) * 100);
                 progressBar.style.width = percentComplete + '%';
                 progressText.textContent = percentComplete + '%';
+                
+                // Se chegar a 100%, mostrar mensagem de processamento
+                if (percentComplete === 100) {
+                    showMessage('Upload concluído! Processando o arquivo...', 'success');
+                }
             }
         });
         
         xhr.addEventListener('load', function() {
             let response;
+            
             try {
                 response = JSON.parse(xhr.responseText);
             } catch (error) {
+                console.error('Erro ao analisar resposta:', xhr.responseText);
                 showMessage('Erro ao processar resposta do servidor.', 'error');
                 return;
             }
@@ -130,8 +151,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 1500);
         });
         
-        xhr.addEventListener('error', function() {
-            showMessage('Erro na conexão com o servidor.', 'error');
+        xhr.addEventListener('error', function(e) {
+            console.error('Erro de conexão:', e);
+            showMessage('Erro na conexão com o servidor. Verifique sua conexão de internet ou contate o administrador.', 'error');
+            progressContainer.classList.add('hidden');
+        });
+        
+        xhr.addEventListener('timeout', function() {
+            console.error('Timeout de conexão');
+            showMessage('Tempo limite excedido. O arquivo pode ser muito grande para sua conexão atual.', 'error');
             progressContainer.classList.add('hidden');
         });
         
@@ -151,10 +179,10 @@ document.addEventListener('DOMContentLoaded', function() {
         messageContainer.classList.add(type);
         messageContainer.classList.remove('hidden');
         
-        // Auto-esconder após 5 segundos
+        // Auto-esconder após 8 segundos (mais tempo para mensagens importantes)
         setTimeout(() => {
             closeMessage();
-        }, 5000);
+        }, 8000);
     }
     
     // Função para fechar mensagem
