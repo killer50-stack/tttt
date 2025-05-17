@@ -10,6 +10,9 @@
     <div class="container">
         <header>
             <h1>Upload de Vídeos</h1>
+            <div class="php-status" id="phpStatus">
+                <span class="status-icon">⚠️</span> Verificando conexão com o servidor...
+            </div>
         </header>
         
         <main>
@@ -38,13 +41,24 @@
                         <p class="progress-text" id="progressText">0%</p>
                     </div>
                     
-                    <button type="submit" class="upload-btn">Enviar vídeo</button>
+                    <button type="submit" class="upload-btn" id="submitBtn">Enviar vídeo</button>
                 </form>
             </div>
             
             <div class="message-container hidden" id="messageContainer">
                 <p id="messageText"></p>
                 <button id="closeMessage" class="close-btn">×</button>
+            </div>
+
+            <div class="troubleshooting-help hidden" id="troubleshooting">
+                <h3>Problemas de Conexão</h3>
+                <p>Se você estiver enfrentando problemas para conectar ao servidor PHP, verifique:</p>
+                <ol>
+                    <li>Se o servidor está executando PHP (versão 7.0 ou superior recomendada)</li>
+                    <li>Se seu servidor web (Apache, Nginx, etc.) está configurado para processar arquivos PHP</li>
+                    <li>Se a pasta possui as permissões corretas</li>
+                </ol>
+                <p><a href="check_php.html">Clique aqui</a> para verificar a configuração do PHP.</p>
             </div>
         </main>
         

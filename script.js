@@ -11,49 +11,107 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeMessageBtn = document.getElementById('closeMessage');
     const storageUsedElement = document.getElementById('storageUsed');
     const usedStorageText = document.getElementById('usedStorage');
+    const phpStatusElement = document.getElementById('phpStatus');
+    const troubleshootingElement = document.getElementById('troubleshooting');
+    const submitButton = document.getElementById('submitBtn');
 
     // Constantes
     const MAX_FILE_SIZE = 3 * 1024 * 1024 * 1024; // 3GB em bytes
     const MAX_TOTAL_STORAGE = 999 * 1024 * 1024 * 1024; // 999GB em bytes
 
-    // Carregar informações de armazenamento
-    fetchStorageInfo();
+    // Verificar se o PHP está funcionando corretamente
+    checkPHPStatus();
 
     // Event listeners
     videoFileInput.addEventListener('change', handleFileSelect);
     uploadForm.addEventListener('submit', handleSubmit);
     closeMessageBtn.addEventListener('click', closeMessage);
 
+    // Função para verificar se o PHP está funcionando
+    function checkPHPStatus() {
+        // Por padrão, desabilitar o botão até termos certeza de que o PHP está funcionando
+        submitButton.disabled = true;
+        
+        fetch('simple_test.php', {
+            method: 'GET',
+            cache: 'no-cache',
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Resposta do servidor não foi ok: ' + response.status);
+            }
+            
+            // Verificar o tipo de conteúdo
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Resposta não é JSON válido');
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            phpStatusElement.innerHTML = `<span class="status-icon">✅</span> PHP ${data.server_info.php_version} está funcionando!`;
+            phpStatusElement.classList.add('success');
+            submitButton.disabled = false;
+            troubleshootingElement.classList.add('hidden');
+            
+            // Agora podemos carregar as informações de armazenamento
+            fetchStorageInfo();
+        })
+        .catch(error => {
+            console.error('Erro ao verificar status do PHP:', error);
+            phpStatusElement.innerHTML = `<span class="status-icon">❌</span> PHP não está funcionando corretamente`;
+            phpStatusElement.classList.add('error');
+            submitButton.disabled = true;
+            troubleshootingElement.classList.remove('hidden');
+            
+            showMessage('O servidor PHP não está respondendo corretamente. O upload não funcionará até que este problema seja resolvido.', 'error');
+        });
+    }
+
     // Função para buscar informações de armazenamento
     function fetchStorageInfo() {
         fetch('upload.php?action=getStorageInfo', {
             method: 'GET',
-            cache: 'no-cache'
+            cache: 'no-cache',
+            headers: {
+                'Accept': 'application/json'
+            }
         })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Resposta de rede não foi ok: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(data => {
-                const usedGB = (data.used / (1024 * 1024 * 1024)).toFixed(2);
-                const usedPercentage = (data.used / MAX_TOTAL_STORAGE) * 100;
-                
-                usedStorageText.textContent = usedGB;
-                storageUsedElement.style.width = `${usedPercentage}%`;
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Resposta de rede não foi ok: ' + response.status);
+            }
+            
+            // Verificar o tipo de conteúdo
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Resposta não é JSON válido');
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            const usedGB = (data.used / (1024 * 1024 * 1024)).toFixed(2);
+            const usedPercentage = (data.used / MAX_TOTAL_STORAGE) * 100;
+            
+            usedStorageText.textContent = usedGB;
+            storageUsedElement.style.width = `${usedPercentage}%`;
 
-                // Mudar cor da barra conforme o uso
-                if (usedPercentage > 90) {
-                    storageUsedElement.style.backgroundColor = 'var(--error-color)';
-                } else if (usedPercentage > 70) {
-                    storageUsedElement.style.backgroundColor = 'orange';
-                }
-            })
-            .catch(error => {
-                console.error('Erro ao buscar informações de armazenamento:', error);
-                showMessage('Não foi possível carregar informações de armazenamento. Recarregue a página.', 'error');
-            });
+            // Mudar cor da barra conforme o uso
+            if (usedPercentage > 90) {
+                storageUsedElement.style.backgroundColor = 'var(--error-color)';
+            } else if (usedPercentage > 70) {
+                storageUsedElement.style.backgroundColor = 'orange';
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao buscar informações de armazenamento:', error);
+            showMessage('Não foi possível carregar informações de armazenamento. Recarregue a página.', 'error');
+        });
     }
 
     // Função para lidar com a seleção de arquivo
@@ -127,10 +185,16 @@ document.addEventListener('DOMContentLoaded', function() {
             let response;
             
             try {
+                if (xhr.responseText.trim().startsWith('<?php')) {
+                    // O PHP não está sendo processado, está sendo enviado como texto
+                    throw new Error('O servidor não está processando arquivos PHP corretamente');
+                }
+                
                 response = JSON.parse(xhr.responseText);
             } catch (error) {
-                console.error('Erro ao analisar resposta:', xhr.responseText);
-                showMessage('Erro ao processar resposta do servidor.', 'error');
+                console.error('Erro ao analisar resposta:', error, xhr.responseText);
+                showMessage('Erro ao processar resposta do servidor. O PHP pode não estar configurado corretamente.', 'error');
+                troubleshootingElement.classList.remove('hidden');
                 return;
             }
             
@@ -154,6 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
         xhr.addEventListener('error', function(e) {
             console.error('Erro de conexão:', e);
             showMessage('Erro na conexão com o servidor. Verifique sua conexão de internet ou contate o administrador.', 'error');
+            troubleshootingElement.classList.remove('hidden');
             progressContainer.classList.add('hidden');
         });
         

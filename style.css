@@ -6,6 +6,7 @@
     --primary-color-hover: #651fff;
     --error-color: #f44336;
     --success-color: #4caf50;
+    --warning-color: #ff9800;
     --text-color: #ffffff;
     --text-secondary: #b0b0b0;
     --border-radius: 8px;
@@ -47,6 +48,31 @@ header h1 {
     font-size: 2.5rem;
     color: var(--text-color);
     letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+/* PHP Status */
+.php-status {
+    background-color: var(--surface-color);
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: var(--border-radius);
+    margin-top: 10px;
+    font-size: 0.9rem;
+}
+
+.php-status.error {
+    background-color: rgba(244, 67, 54, 0.2);
+    color: var(--error-color);
+}
+
+.php-status.success {
+    background-color: rgba(76, 175, 80, 0.2);
+    color: var(--success-color);
+}
+
+.status-icon {
+    margin-right: 6px;
 }
 
 /* Main content */
@@ -228,6 +254,41 @@ input[type="file"] {
 
 .close-btn:hover {
     color: var(--text-color);
+}
+
+/* Troubleshooting help */
+.troubleshooting-help {
+    max-width: 600px;
+    width: 100%;
+    background-color: var(--surface-color);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    margin-top: 30px;
+    box-shadow: var(--shadow);
+    border-left: 4px solid var(--warning-color);
+}
+
+.troubleshooting-help h3 {
+    color: var(--warning-color);
+    margin-bottom: 15px;
+}
+
+.troubleshooting-help ol {
+    padding-left: 20px;
+    margin-bottom: 15px;
+}
+
+.troubleshooting-help li {
+    margin-bottom: 8px;
+}
+
+.troubleshooting-help a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.troubleshooting-help a:hover {
+    text-decoration: underline;
 }
 
 /* Footer */
