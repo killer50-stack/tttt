@@ -1,262 +1,25 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Elementos do DOM
-    const uploadForm = document.getElementById('uploadForm');
-    const videoFileInput = document.getElementById('videoFile');
-    const selectedFileText = document.getElementById('selectedFile');
-    const progressContainer = document.getElementById('progressContainer');
-    const progressBar = document.getElementById('progressBar');
-    const progressText = document.getElementById('progressText');
-    const messageContainer = document.getElementById('messageContainer');
-    const messageText = document.getElementById('messageText');
-    const closeMessageBtn = document.getElementById('closeMessage');
-    const storageUsedElement = document.getElementById('storageUsed');
-    const usedStorageText = document.getElementById('usedStorage');
-    const phpStatusElement = document.getElementById('phpStatus');
-    const troubleshootingElement = document.getElementById('troubleshooting');
-    const submitButton = document.getElementById('submitBtn');
-
+document.addEventListener('DOMContentLoaded', () => {
     // Constantes
+    const API_URL = 'http://localhost:3000/api'; // URL do servidor Node.js
     const MAX_FILE_SIZE = 3 * 1024 * 1024 * 1024; // 3GB em bytes
     const MAX_TOTAL_STORAGE = 999 * 1024 * 1024 * 1024; // 999GB em bytes
-
-    // Verificar se o PHP está funcionando corretamente
-    checkPHPStatus();
-
-    // Event listeners
-    videoFileInput.addEventListener('change', handleFileSelect);
-    uploadForm.addEventListener('submit', handleSubmit);
-    closeMessageBtn.addEventListener('click', closeMessage);
-
-    // Função para verificar se o PHP está funcionando
-    function checkPHPStatus() {
-        // Por padrão, desabilitar o botão até termos certeza de que o PHP está funcionando
-        submitButton.disabled = true;
-        
-        fetch('simple_test.php', {
-            method: 'GET',
-            cache: 'no-cache',
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Resposta do servidor não foi ok: ' + response.status);
-            }
-            
-            // Verificar o tipo de conteúdo
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Resposta não é JSON válido');
-            }
-            
-            return response.json();
-        })
-        .then(data => {
-            phpStatusElement.innerHTML = `<span class="status-icon">✅</span> PHP ${data.server_info.php_version} está funcionando!`;
-            phpStatusElement.classList.add('success');
-            submitButton.disabled = false;
-            troubleshootingElement.classList.add('hidden');
-            
-            // Agora podemos carregar as informações de armazenamento
-            fetchStorageInfo();
-        })
-        .catch(error => {
-            console.error('Erro ao verificar status do PHP:', error);
-            phpStatusElement.innerHTML = `<span class="status-icon">❌</span> PHP não está funcionando corretamente`;
-            phpStatusElement.classList.add('error');
-            submitButton.disabled = true;
-            troubleshootingElement.classList.remove('hidden');
-            
-            showMessage('O servidor PHP não está respondendo corretamente. O upload não funcionará até que este problema seja resolvido.', 'error');
-        });
-    }
-
-    // Função para buscar informações de armazenamento
-    function fetchStorageInfo() {
-        fetch('upload.php?action=getStorageInfo', {
-            method: 'GET',
-            cache: 'no-cache',
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Resposta de rede não foi ok: ' + response.status);
-            }
-            
-            // Verificar o tipo de conteúdo
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Resposta não é JSON válido');
-            }
-            
-            return response.json();
-        })
-        .then(data => {
-            const usedGB = (data.used / (1024 * 1024 * 1024)).toFixed(2);
-            const usedPercentage = (data.used / MAX_TOTAL_STORAGE) * 100;
-            
-            usedStorageText.textContent = usedGB;
-            storageUsedElement.style.width = `${usedPercentage}%`;
-
-            // Mudar cor da barra conforme o uso
-            if (usedPercentage > 90) {
-                storageUsedElement.style.backgroundColor = 'var(--error-color)';
-            } else if (usedPercentage > 70) {
-                storageUsedElement.style.backgroundColor = 'orange';
-            }
-        })
-        .catch(error => {
-            console.error('Erro ao buscar informações de armazenamento:', error);
-            showMessage('Não foi possível carregar informações de armazenamento. Recarregue a página.', 'error');
-        });
-    }
-
-    // Função para lidar com a seleção de arquivo
-    function handleFileSelect(e) {
-        const file = e.target.files[0];
-        
-        if (file) {
-            // Exibir nome do arquivo selecionado
-            selectedFileText.textContent = `${file.name} (${formatFileSize(file.size)})`;
-            
-            // Validar tamanho do arquivo
-            if (file.size > MAX_FILE_SIZE) {
-                showMessage(`Erro: O arquivo excede o limite de 3GB. Tamanho atual: ${formatFileSize(file.size)}`, 'error');
-                e.target.value = ''; // Limpar seleção
-                selectedFileText.textContent = 'Nenhum arquivo selecionado';
-            }
-        } else {
-            selectedFileText.textContent = 'Nenhum arquivo selecionado';
-        }
-    }
-
-    // Função para lidar com o envio do formulário
-    function handleSubmit(e) {
-        e.preventDefault();
-        
-        const file = videoFileInput.files[0];
-        
-        if (!file) {
-            showMessage('Por favor, selecione um arquivo para enviar.', 'error');
-            return;
-        }
-        
-        // Validar novamente o tamanho do arquivo
-        if (file.size > MAX_FILE_SIZE) {
-            showMessage(`Erro: O arquivo excede o limite de 3GB. Tamanho atual: ${formatFileSize(file.size)}`, 'error');
-            return;
-        }
-        
-        // Mostrar mensagem sobre o início do upload
-        showMessage('Iniciando upload do vídeo, isso pode levar algum tempo para arquivos grandes...', 'success');
-        
-        // Preparar formulário para envio
-        const formData = new FormData();
-        formData.append('videoFile', file);
-        
-        // Configurar e mostrar barra de progresso
-        progressContainer.classList.remove('hidden');
-        progressBar.style.width = '0%';
-        progressText.textContent = '0%';
-        
-        // Enviar arquivo
-        const xhr = new XMLHttpRequest();
-        
-        // Configurar um timeout maior para uploads grandes (10 minutos)
-        xhr.timeout = 600000; // 10 minutos em milissegundos
-        
-        xhr.upload.addEventListener('progress', function(e) {
-            if (e.lengthComputable) {
-                const percentComplete = Math.round((e.loaded / e.total) * 100);
-                progressBar.style.width = percentComplete + '%';
-                progressText.textContent = percentComplete + '%';
-                
-                // Se chegar a 100%, mostrar mensagem de processamento
-                if (percentComplete === 100) {
-                    showMessage('Upload concluído! Processando o arquivo...', 'success');
-                }
-            }
-        });
-        
-        xhr.addEventListener('load', function() {
-            let response;
-            
-            try {
-                if (xhr.responseText.trim().startsWith('<?php')) {
-                    // O PHP não está sendo processado, está sendo enviado como texto
-                    throw new Error('O servidor não está processando arquivos PHP corretamente');
-                }
-                
-                response = JSON.parse(xhr.responseText);
-            } catch (error) {
-                console.error('Erro ao analisar resposta:', error, xhr.responseText);
-                showMessage('Erro ao processar resposta do servidor. O PHP pode não estar configurado corretamente.', 'error');
-                troubleshootingElement.classList.remove('hidden');
-                return;
-            }
-            
-            if (xhr.status === 200 && response.success) {
-                showMessage(response.message, 'success');
-                // Limpar formulário
-                uploadForm.reset();
-                selectedFileText.textContent = 'Nenhum arquivo selecionado';
-                // Atualizar informações de armazenamento
-                fetchStorageInfo();
-            } else {
-                showMessage(response.message || 'Erro no upload do arquivo.', 'error');
-            }
-            
-            // Esconder barra de progresso depois de um tempo
-            setTimeout(() => {
-                progressContainer.classList.add('hidden');
-            }, 1500);
-        });
-        
-        xhr.addEventListener('error', function(e) {
-            console.error('Erro de conexão:', e);
-            showMessage('Erro na conexão com o servidor. Verifique sua conexão de internet ou contate o administrador.', 'error');
-            troubleshootingElement.classList.remove('hidden');
-            progressContainer.classList.add('hidden');
-        });
-        
-        xhr.addEventListener('timeout', function() {
-            console.error('Timeout de conexão');
-            showMessage('Tempo limite excedido. O arquivo pode ser muito grande para sua conexão atual.', 'error');
-            progressContainer.classList.add('hidden');
-        });
-        
-        xhr.addEventListener('abort', function() {
-            showMessage('Upload cancelado.', 'error');
-            progressContainer.classList.add('hidden');
-        });
-        
-        xhr.open('POST', 'upload.php');
-        xhr.send(formData);
-    }
-
-    // Função para exibir mensagens
-    function showMessage(msg, type) {
-        messageText.textContent = msg;
-        messageContainer.classList.remove('hidden', 'success', 'error');
-        messageContainer.classList.add(type);
-        messageContainer.classList.remove('hidden');
-        
-        // Auto-esconder após 8 segundos (mais tempo para mensagens importantes)
-        setTimeout(() => {
-            closeMessage();
-        }, 8000);
-    }
     
-    // Função para fechar mensagem
-    function closeMessage() {
-        messageContainer.classList.add('hidden');
-    }
+    // Elementos DOM
+    const uploadForm = document.getElementById('uploadForm');
+    const videoFile = document.getElementById('videoFile');
+    const fileInfo = document.getElementById('fileInfo');
+    const uploadButton = document.getElementById('uploadButton');
+    const progressBar = document.getElementById('progressBar');
+    const usedSpaceElement = document.getElementById('usedSpace');
+    const availableSpaceElement = document.getElementById('availableSpace');
+    const messagesContainer = document.getElementById('messages');
+    const videoListElement = document.getElementById('videoList');
     
-    // Função para formatar tamanho do arquivo
-    function formatFileSize(bytes) {
+    // Variáveis para rastrear os dados de armazenamento
+    let totalUsedSpace = 0;
+    
+    // Função para formatar tamanho em bytes para uma string legível
+    const formatSize = (bytes) => {
         if (bytes === 0) return '0 Bytes';
         
         const k = 1024;
@@ -264,5 +27,247 @@ document.addEventListener('DOMContentLoaded', function() {
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
+    };
+    
+    // Função para mostrar mensagens
+    const showMessage = (message, type) => {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', type);
+        messageElement.textContent = message;
+        
+        messagesContainer.innerHTML = '';
+        messagesContainer.appendChild(messageElement);
+        
+        // Remove a mensagem após 5 segundos se não for a mensagem sobre limitação
+        if (!message.includes('Nota:')) {
+            setTimeout(() => {
+                messageElement.remove();
+            }, 5000);
+        }
+    };
+    
+    // Função para atualizar as estatísticas de armazenamento
+    const updateStorageStats = (usedSpace) => {
+        totalUsedSpace = usedSpace || totalUsedSpace;
+        usedSpaceElement.textContent = formatSize(totalUsedSpace);
+        availableSpaceElement.textContent = formatSize(MAX_TOTAL_STORAGE - totalUsedSpace);
+        
+        if (totalUsedSpace >= MAX_TOTAL_STORAGE) {
+            showMessage('Limite de armazenamento atingido (999GB). Não é possível fazer mais uploads.', 'error');
+            uploadButton.disabled = true;
+        } else {
+            uploadButton.disabled = false;
+        }
+    };
+    
+    // Função para carregar a lista de vídeos do servidor
+    const loadVideoList = async () => {
+        try {
+            const response = await fetch(`${API_URL}/videos`);
+            const data = await response.json();
+            
+            if (data.success) {
+                totalUsedSpace = data.totalSize || 0;
+                updateStorageStats(totalUsedSpace);
+                
+                if (data.videos && data.videos.length > 0) {
+                    videoListElement.innerHTML = '';
+                    
+                    data.videos.forEach(video => {
+                        const li = document.createElement('li');
+                        
+                        const videoInfo = document.createElement('div');
+                        videoInfo.classList.add('video-info');
+                        
+                        const videoName = document.createElement('div');
+                        videoName.classList.add('video-name');
+                        videoName.textContent = video.name;
+                        
+                        const videoSize = document.createElement('div');
+                        videoSize.classList.add('video-size');
+                        videoSize.textContent = formatSize(video.size);
+                        
+                        const videoDate = document.createElement('div');
+                        videoDate.classList.add('video-size');
+                        videoDate.textContent = new Date(video.time).toLocaleDateString() + ' ' + 
+                                               new Date(video.time).toLocaleTimeString();
+                        
+                        videoInfo.appendChild(videoName);
+                        videoInfo.appendChild(videoSize);
+                        videoInfo.appendChild(videoDate);
+                        
+                        const videoActions = document.createElement('div');
+                        videoActions.classList.add('video-actions');
+                        
+                        const viewButton = document.createElement('button');
+                        viewButton.textContent = 'Visualizar';
+                        viewButton.addEventListener('click', () => {
+                            window.open(video.url, '_blank');
+                        });
+                        videoActions.appendChild(viewButton);
+                        
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Excluir';
+                        deleteButton.style.backgroundColor = 'var(--error-color)';
+                        deleteButton.addEventListener('click', async () => {
+                            if (confirm(`Tem certeza que deseja excluir o vídeo "${video.name}"?`)) {
+                                try {
+                                    const deleteResponse = await fetch(`${API_URL}/videos/${video.name}`, {
+                                        method: 'DELETE'
+                                    });
+                                    
+                                    const deleteData = await deleteResponse.json();
+                                    
+                                    if (deleteData.success) {
+                                        showMessage('Vídeo excluído com sucesso!', 'success');
+                                        loadVideoList(); // Recarrega a lista
+                                    } else {
+                                        showMessage(`Erro ao excluir vídeo: ${deleteData.error}`, 'error');
+                                    }
+                                } catch (error) {
+                                    showMessage('Erro ao comunicar com o servidor', 'error');
+                                    console.error(error);
+                                }
+                            }
+                        });
+                        
+                        videoActions.appendChild(deleteButton);
+                        
+                        li.appendChild(videoInfo);
+                        li.appendChild(videoActions);
+                        
+                        videoListElement.appendChild(li);
+                    });
+                } else {
+                    videoListElement.innerHTML = '<li class="loading">Nenhum vídeo encontrado</li>';
+                }
+            } else {
+                throw new Error(data.error || 'Erro ao carregar a lista de vídeos');
+            }
+        } catch (error) {
+            console.error('Erro ao carregar a lista de vídeos:', error);
+            videoListElement.innerHTML = '<li class="loading">Erro ao carregar vídeos</li>';
+            showMessage('Não foi possível carregar a lista de vídeos. Verifique se o servidor está funcionando.', 'error');
+        }
+    };
+    
+    // Inicializa a página carregando a lista de vídeos
+    loadVideoList();
+    
+    // Evento para quando o usuário seleciona um arquivo
+    videoFile.addEventListener('change', () => {
+        if (videoFile.files.length > 0) {
+            const file = videoFile.files[0];
+            
+            // Verifica se o arquivo é realmente um vídeo
+            if (!file.type.startsWith('video/')) {
+                showMessage('Por favor, selecione apenas arquivos de vídeo', 'error');
+                videoFile.value = '';
+                fileInfo.textContent = 'Nenhum arquivo selecionado';
+                return;
+            }
+            
+            // Verifica o tamanho do arquivo
+            if (file.size > MAX_FILE_SIZE) {
+                showMessage(`O tamanho do arquivo excede o limite de ${formatSize(MAX_FILE_SIZE)}`, 'error');
+                videoFile.value = '';
+                fileInfo.textContent = 'Nenhum arquivo selecionado';
+                return;
+            }
+            
+            // Verifica se há espaço suficiente
+            if (totalUsedSpace + file.size > MAX_TOTAL_STORAGE) {
+                showMessage('Espaço de armazenamento insuficiente', 'error');
+                videoFile.value = '';
+                fileInfo.textContent = 'Nenhum arquivo selecionado';
+                return;
+            }
+            
+            // Atualiza a informação do arquivo
+            fileInfo.textContent = `${file.name} (${formatSize(file.size)})`;
+        } else {
+            fileInfo.textContent = 'Nenhum arquivo selecionado';
+        }
+    });
+    
+    // Manipula o envio do formulário
+    uploadForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        if (!videoFile.files.length) {
+            showMessage('Por favor, selecione um arquivo para enviar', 'error');
+            return;
+        }
+        
+        const file = videoFile.files[0];
+        
+        // Verifica novamente o tamanho e o tipo
+        if (file.size > MAX_FILE_SIZE || !file.type.startsWith('video/')) {
+            showMessage('Arquivo inválido ou muito grande', 'error');
+            return;
+        }
+        
+        // Prepara os dados para envio
+        const formData = new FormData();
+        formData.append('videoFile', file);
+        
+        // Desativa o botão e mostra progresso
+        uploadButton.disabled = true;
+        uploadButton.textContent = 'Enviando...';
+        
+        try {
+            const xhr = new XMLHttpRequest();
+            
+            // Configura o progresso do upload
+            xhr.upload.addEventListener('progress', (event) => {
+                if (event.lengthComputable) {
+                    const percentComplete = (event.loaded / event.total) * 100;
+                    progressBar.style.width = percentComplete + '%';
+                }
+            });
+            
+            // Configura o evento de conclusão
+            xhr.onload = function() {
+                uploadButton.disabled = false;
+                uploadButton.textContent = 'Enviar Vídeo';
+                
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    
+                    if (response.success) {
+                        showMessage('Upload realizado com sucesso!', 'success');
+                        videoFile.value = '';
+                        fileInfo.textContent = 'Nenhum arquivo selecionado';
+                        progressBar.style.width = '0';
+                        
+                        // Recarrega a lista de vídeos
+                        loadVideoList();
+                    } else {
+                        showMessage(`Erro: ${response.error}`, 'error');
+                    }
+                } catch (error) {
+                    showMessage('Erro ao processar resposta do servidor', 'error');
+                    console.error(error);
+                }
+            };
+            
+            // Configura evento de erro
+            xhr.onerror = function() {
+                uploadButton.disabled = false;
+                uploadButton.textContent = 'Enviar Vídeo';
+                showMessage('Erro na comunicação com o servidor', 'error');
+                progressBar.style.width = '0';
+            };
+            
+            // Envia o arquivo
+            xhr.open('POST', `${API_URL}/upload`, true);
+            xhr.send(formData);
+            
+        } catch (error) {
+            uploadButton.disabled = false;
+            uploadButton.textContent = 'Enviar Vídeo';
+            showMessage('Erro ao enviar o arquivo', 'error');
+            console.error(error);
+        }
+    });
 }); 

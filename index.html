@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,63 +8,41 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Upload de Vídeos</h1>
-            <div class="php-status" id="phpStatus">
-                <span class="status-icon">⚠️</span> Verificando conexão com o servidor...
-            </div>
-        </header>
+        <h1>Upload de Vídeos</h1>
         
-        <main>
-            <div class="upload-container">
-                <div class="storage-info">
-                    <div class="storage-bar">
-                        <div class="storage-used" id="storageUsed"></div>
-                    </div>
-                    <p>Espaço utilizado: <span id="usedStorage">0</span> de 999 GB</p>
-                </div>
+        <div class="stats">
+            <div class="stat-item">
+                <span>Espaço utilizado:</span>
+                <span id="usedSpace">Carregando...</span>
+            </div>
+            <div class="stat-item">
+                <span>Espaço disponível:</span>
+                <span id="availableSpace">Carregando...</span>
+            </div>
+        </div>
 
-                <form id="uploadForm" enctype="multipart/form-data">
-                    <div class="file-input-container">
-                        <label for="videoFile" class="file-label">
-                            <span class="file-icon">📁</span>
-                            <span class="file-text">Selecionar vídeo</span>
-                        </label>
-                        <input type="file" id="videoFile" name="videoFile" accept="video/*">
-                        <p class="selected-file" id="selectedFile">Nenhum arquivo selecionado</p>
-                    </div>
-                    
-                    <div class="progress-container hidden" id="progressContainer">
-                        <div class="progress-bar">
-                            <div class="progress" id="progressBar"></div>
-                        </div>
-                        <p class="progress-text" id="progressText">0%</p>
-                    </div>
-                    
-                    <button type="submit" class="upload-btn" id="submitBtn">Enviar vídeo</button>
-                </form>
+        <div id="messages" class="message-container"></div>
+
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="file-input-container">
+                <label for="videoFile" class="file-label">Selecione um arquivo de vídeo</label>
+                <input type="file" id="videoFile" name="videoFile" accept="video/*">
+                <div class="file-info" id="fileInfo">Nenhum arquivo selecionado</div>
             </div>
             
-            <div class="message-container hidden" id="messageContainer">
-                <p id="messageText"></p>
-                <button id="closeMessage" class="close-btn">×</button>
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
             </div>
+            
+            <button type="submit" id="uploadButton">Enviar Vídeo</button>
+        </form>
 
-            <div class="troubleshooting-help hidden" id="troubleshooting">
-                <h3>Problemas de Conexão</h3>
-                <p>Se você estiver enfrentando problemas para conectar ao servidor PHP, verifique:</p>
-                <ol>
-                    <li>Se o servidor está executando PHP (versão 7.0 ou superior recomendada)</li>
-                    <li>Se seu servidor web (Apache, Nginx, etc.) está configurado para processar arquivos PHP</li>
-                    <li>Se a pasta possui as permissões corretas</li>
-                </ol>
-                <p><a href="check_php.html">Clique aqui</a> para verificar a configuração do PHP.</p>
-            </div>
-        </main>
-        
-        <footer>
-            <p>&copy; 2023 Upload de Vídeos</p>
-        </footer>
+        <div class="video-list">
+            <h2>Vídeos Enviados</h2>
+            <ul id="videoList">
+                <li class="loading">Carregando lista de vídeos...</li>
+            </ul>
+        </div>
     </div>
 
     <script src="script.js"></script>
