@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload de Vídeos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Upload de Vídeos</h1>
+        </header>
+        
+        <main>
+            <div class="upload-container">
+                <div class="storage-info">
+                    <div class="storage-bar">
+                        <div class="storage-used" id="storageUsed"></div>
+                    </div>
+                    <p>Espaço utilizado: <span id="usedStorage">0</span> de 999 GB</p>
+                </div>
+
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="file-input-container">
+                        <label for="videoFile" class="file-label">
+                            <span class="file-icon">📁</span>
+                            <span class="file-text">Selecionar vídeo</span>
+                        </label>
+                        <input type="file" id="videoFile" name="videoFile" accept="video/*">
+                        <p class="selected-file" id="selectedFile">Nenhum arquivo selecionado</p>
+                    </div>
+                    
+                    <div class="progress-container hidden" id="progressContainer">
+                        <div class="progress-bar">
+                            <div class="progress" id="progressBar"></div>
+                        </div>
+                        <p class="progress-text" id="progressText">0%</p>
+                    </div>
+                    
+                    <button type="submit" class="upload-btn">Enviar vídeo</button>
+                </form>
+            </div>
+            
+            <div class="message-container hidden" id="messageContainer">
+                <p id="messageText"></p>
+                <button id="closeMessage" class="close-btn">×</button>
+            </div>
+        </main>
+        
+        <footer>
+            <p>&copy; 2023 Upload de Vídeos</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 

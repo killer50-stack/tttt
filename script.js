@@ -1,0 +1,175 @@
+document.addEventListener('DOMContentLoaded', function() {
+    // Elementos do DOM
+    const uploadForm = document.getElementById('uploadForm');
+    const videoFileInput = document.getElementById('videoFile');
+    const selectedFileText = document.getElementById('selectedFile');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const messageContainer = document.getElementById('messageContainer');
+    const messageText = document.getElementById('messageText');
+    const closeMessageBtn = document.getElementById('closeMessage');
+    const storageUsedElement = document.getElementById('storageUsed');
+    const usedStorageText = document.getElementById('usedStorage');
+
+    // Constantes
+    const MAX_FILE_SIZE = 3 * 1024 * 1024 * 1024; // 3GB em bytes
+    const MAX_TOTAL_STORAGE = 999 * 1024 * 1024 * 1024; // 999GB em bytes
+
+    // Carregar informações de armazenamento
+    fetchStorageInfo();
+
+    // Event listeners
+    videoFileInput.addEventListener('change', handleFileSelect);
+    uploadForm.addEventListener('submit', handleSubmit);
+    closeMessageBtn.addEventListener('click', closeMessage);
+
+    // Função para buscar informações de armazenamento
+    function fetchStorageInfo() {
+        fetch('upload.php?action=getStorageInfo')
+            .then(response => response.json())
+            .then(data => {
+                const usedGB = (data.used / (1024 * 1024 * 1024)).toFixed(2);
+                const usedPercentage = (data.used / MAX_TOTAL_STORAGE) * 100;
+                
+                usedStorageText.textContent = usedGB;
+                storageUsedElement.style.width = `${usedPercentage}%`;
+
+                // Mudar cor da barra conforme o uso
+                if (usedPercentage > 90) {
+                    storageUsedElement.style.backgroundColor = 'var(--error-color)';
+                } else if (usedPercentage > 70) {
+                    storageUsedElement.style.backgroundColor = 'orange';
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao buscar informações de armazenamento:', error);
+                showMessage('Não foi possível carregar informações de armazenamento.', 'error');
+            });
+    }
+
+    // Função para lidar com a seleção de arquivo
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        
+        if (file) {
+            // Exibir nome do arquivo selecionado
+            selectedFileText.textContent = `${file.name} (${formatFileSize(file.size)})`;
+            
+            // Validar tamanho do arquivo
+            if (file.size > MAX_FILE_SIZE) {
+                showMessage(`Erro: O arquivo excede o limite de 3GB. Tamanho atual: ${formatFileSize(file.size)}`, 'error');
+                e.target.value = ''; // Limpar seleção
+                selectedFileText.textContent = 'Nenhum arquivo selecionado';
+            }
+        } else {
+            selectedFileText.textContent = 'Nenhum arquivo selecionado';
+        }
+    }
+
+    // Função para lidar com o envio do formulário
+    function handleSubmit(e) {
+        e.preventDefault();
+        
+        const file = videoFileInput.files[0];
+        
+        if (!file) {
+            showMessage('Por favor, selecione um arquivo para enviar.', 'error');
+            return;
+        }
+        
+        // Validar novamente o tamanho do arquivo
+        if (file.size > MAX_FILE_SIZE) {
+            showMessage(`Erro: O arquivo excede o limite de 3GB. Tamanho atual: ${formatFileSize(file.size)}`, 'error');
+            return;
+        }
+        
+        // Preparar formulário para envio
+        const formData = new FormData();
+        formData.append('videoFile', file);
+        
+        // Configurar e mostrar barra de progresso
+        progressContainer.classList.remove('hidden');
+        progressBar.style.width = '0%';
+        progressText.textContent = '0%';
+        
+        // Enviar arquivo
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percentComplete + '%';
+                progressText.textContent = percentComplete + '%';
+            }
+        });
+        
+        xhr.addEventListener('load', function() {
+            let response;
+            try {
+                response = JSON.parse(xhr.responseText);
+            } catch (error) {
+                showMessage('Erro ao processar resposta do servidor.', 'error');
+                return;
+            }
+            
+            if (xhr.status === 200 && response.success) {
+                showMessage(response.message, 'success');
+                // Limpar formulário
+                uploadForm.reset();
+                selectedFileText.textContent = 'Nenhum arquivo selecionado';
+                // Atualizar informações de armazenamento
+                fetchStorageInfo();
+            } else {
+                showMessage(response.message || 'Erro no upload do arquivo.', 'error');
+            }
+            
+            // Esconder barra de progresso depois de um tempo
+            setTimeout(() => {
+                progressContainer.classList.add('hidden');
+            }, 1500);
+        });
+        
+        xhr.addEventListener('error', function() {
+            showMessage('Erro na conexão com o servidor.', 'error');
+            progressContainer.classList.add('hidden');
+        });
+        
+        xhr.addEventListener('abort', function() {
+            showMessage('Upload cancelado.', 'error');
+            progressContainer.classList.add('hidden');
+        });
+        
+        xhr.open('POST', 'upload.php');
+        xhr.send(formData);
+    }
+
+    // Função para exibir mensagens
+    function showMessage(msg, type) {
+        messageText.textContent = msg;
+        messageContainer.classList.remove('hidden', 'success', 'error');
+        messageContainer.classList.add(type);
+        messageContainer.classList.remove('hidden');
+        
+        // Auto-esconder após 5 segundos
+        setTimeout(() => {
+            closeMessage();
+        }, 5000);
+    }
+    
+    // Função para fechar mensagem
+    function closeMessage() {
+        messageContainer.classList.add('hidden');
+    }
+    
+    // Função para formatar tamanho do arquivo
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+}); 
